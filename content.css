@@ -1,0 +1,102 @@
+#gtt-widget {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483646;
+  font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+.gtt-card {
+  width: 240px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #1f1f1f;
+  border: 1px solid #3c4043;
+  color: #e8eaed;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.gtt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.gtt-head strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gtt-collapse {
+  border: none;
+  background: none;
+  color: #9aa0a6;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.gtt-collapse:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8eaed;
+}
+
+.gtt-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.gtt-name {
+  text-transform: capitalize;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gtt-value {
+  color: #9aa0a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.gtt-value.gtt-hit {
+  color: #81c995;
+}
+
+.gtt-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 9999px;
+  background: #3c4043;
+  overflow: hidden;
+}
+
+.gtt-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: #8ab4f8;
+}
+
+.gtt-fill.gtt-hit {
+  background: #81c995;
+}
+
+.gtt-pill {
+  border: 1px solid #3c4043;
+  border-radius: 9999px;
+  background: #1f1f1f;
+  color: #e8eaed;
+  font: 600 13px/1 "Google Sans", -apple-system, sans-serif;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.gtt-pill:hover {
+  background: #28292a;
+}

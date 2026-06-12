@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon48.png" alt="" width="36" height="36">
+    <div>
+      <h1>GCal Time Tracker</h1>
+      <p id="status">&nbsp;</p>
+    </div>
+  </header>
+
+  <section id="setup" hidden>
+    <h2>Connect your calendar</h2>
+    <ol>
+      <li>Open <b>Google Calendar → ⚙ Settings</b></li>
+      <li>Click your calendar in the left sidebar</li>
+      <li><b>Integrate calendar</b> → copy <b>"Secret address in iCal format"</b></li>
+    </ol>
+    <form id="urlForm">
+      <input id="urlInput" type="url" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" autocomplete="off" spellcheck="false">
+      <button type="submit">Connect</button>
+    </form>
+  </section>
+
+  <section id="statsSection" hidden>
+    <div id="cards"></div>
+  </section>
+
+  <section id="trackedSection" hidden>
+    <h2>Tracked events</h2>
+    <div class="chips" id="trackedChips"></div>
+    <form id="trackedForm">
+      <input id="nameInput" type="text" placeholder="event name (e.g. work)" autocomplete="off" spellcheck="false">
+      <input id="targetInput" type="number" min="0" step="0.5" placeholder="h/week" title="Weekly target hours (optional)">
+      <button type="submit">Track</button>
+    </form>
+  </section>
+
+  <section id="calendarsSection" hidden>
+    <h2>Calendars</h2>
+    <div class="chips" id="urlChips"></div>
+    <form id="moreUrlForm">
+      <input id="moreUrlInput" type="url" placeholder="add another secret .ics URL" autocomplete="off" spellcheck="false">
+      <button type="submit">Add</button>
+    </form>
+  </section>
+
+  <footer>
+    <a href="https://github.com/MaryanPrydatko/gcal-time-tracker" target="_blank" rel="noreferrer">GitHub</a>
+    <span id="version"></span>
+  </footer>
+
+  <script src="vendor/ical.min.js"></script>
+  <script src="lib/hours.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

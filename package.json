@@ -1,0 +1,12 @@
+{
+  "name": "gcal-time-tracker",
+  "private": true,
+  "scripts": {
+    "icons": "node test/gen-icons.mjs",
+    "test": "node test/run-fixture.mjs",
+    "shots": "node test/gen-shots.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
+}

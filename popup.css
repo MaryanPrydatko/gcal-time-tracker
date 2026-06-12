@@ -1,0 +1,226 @@
+body {
+  margin: 0;
+  width: 340px;
+  background: #1b1b1b;
+  color: #e8eaed;
+  font: 14px/1.45 "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #3c4043;
+}
+
+header img {
+  border-radius: 10px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+#status {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+section {
+  border-bottom: 1px solid #3c4043;
+  padding: 4px 0 12px;
+}
+
+h2 {
+  margin: 12px 16px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #9aa0a6;
+}
+
+#setup ol {
+  margin: 8px 16px;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #bdc1c6;
+}
+
+#setup li {
+  margin: 4px 0;
+}
+
+form {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px 4px;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #3c4043;
+  border-radius: 9999px;
+  background: #28292a;
+  color: #e8eaed;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #8ab4f8;
+}
+
+input::placeholder {
+  color: #9aa0a6;
+}
+
+#targetInput {
+  flex: 0 0 76px;
+}
+
+button[type="submit"] {
+  border: none;
+  border-radius: 9999px;
+  background: #8ab4f8;
+  color: #202124;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 16px;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background: #aecbfa;
+}
+
+/* Stat cards */
+.card {
+  margin: 10px 16px 4px;
+  padding: 12px 14px;
+  background: #28292a;
+  border: 1px solid #3c4043;
+  border-radius: 12px;
+}
+
+.card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-top strong {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.value {
+  font-size: 13px;
+  color: #9aa0a6;
+}
+
+.value.hit {
+  color: #81c995;
+}
+
+.bar {
+  margin-top: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #3c4043;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: #8ab4f8;
+  transition: width 0.3s ease;
+}
+
+.fill.hit {
+  background: #81c995;
+}
+
+.history {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9aa0a6;
+}
+
+.history .avg {
+  margin-left: auto;
+  font-weight: 600;
+}
+
+/* Chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 16px 0;
+}
+
+.empty {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid #3c4043;
+  border-radius: 9999px;
+  background: #28292a;
+  font-size: 13px;
+}
+
+.chip button {
+  border: none;
+  background: none;
+  color: #9aa0a6;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.chip button:hover {
+  color: #f28b82;
+  background: rgba(242, 139, 130, 0.12);
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+footer a {
+  color: #8ab4f8;
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
