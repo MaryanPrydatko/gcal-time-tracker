@@ -72,6 +72,10 @@
   color: #fdd663;
 }
 
+.gtt-value.gtt-under {
+  color: #f28b82;
+}
+
 .gtt-bar {
   grid-column: 1 / -1;
   height: 6px;
@@ -92,6 +96,10 @@
 
 .gtt-fill.gtt-over {
   background: #fdd663;
+}
+
+.gtt-fill.gtt-under {
+  background: #f28b82;
 }
 
 .gtt-note {

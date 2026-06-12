@@ -140,7 +140,7 @@ await popup.waitForTimeout(400);
 
 check((await popup.locator('.card').count()) === 2, 'popup renders a card per tracked event');
 const workValue = await popup.locator('.card .value').first().innerText();
-check(workValue === '10 / 30h this week', `popup work card shows progress vs target (got "${workValue}")`);
+check(workValue === '10 / 30h this week · −20h', `popup work card shows progress vs target (got "${workValue}")`);
 const gymValue = await popup.locator('.card .value').nth(1).innerText();
 check(
   gymValue === '1 / 0.5h this week · +0.5h over',
@@ -150,8 +150,8 @@ const avg = await popup.locator('.card .avg').first().innerText();
 check(avg === 'avg 6.5h', `popup shows past-weeks average (got "${avg}")`);
 const workNext = await popup.locator('.card .next').first().innerText();
 check(
-  workNext === 'Next week: 30h target · 8h planned',
-  `next week shows target + planned hours (got "${workNext}")`
+  workNext === 'Next week: 30 + 20 = 50h · 8h planned',
+  `deficit carried into next week's target (got "${workNext}")`
 );
 const gymNext = await popup.locator('.card .next').nth(1).innerText();
 check(
@@ -196,7 +196,7 @@ await widget.waitForTimeout(400);
 
 check((await widget.locator('#gtt-widget .gtt-row').count()) === 2, 'widget renders a row per tracked event');
 const widgetWork = await widget.locator('.gtt-value').first().innerText();
-check(widgetWork === '10 / 30h', `widget shows work progress (got "${widgetWork}")`);
+check(widgetWork === '10 / 30h · −20h', `widget shows work progress (got "${widgetWork}")`);
 await widget.locator('.gtt-collapse').click();
 check((await widget.locator('.gtt-pill').count()) === 1, 'widget collapses to pill');
 await widget.locator('.gtt-pill').click();
@@ -286,7 +286,7 @@ check(
 await dom.addScriptTag({ path: path.join(root, 'content.js') });
 await dom.waitForTimeout(400);
 const domWidgetWork = await dom.locator('.gtt-value').first().innerText();
-check(domWidgetWork === '6.8 / 20h', `dom-mode widget shows work progress (got "${domWidgetWork}")`);
+check(domWidgetWork === '6.8 / 20h · −13.3h', `dom-mode widget shows work progress (got "${domWidgetWork}")`);
 const domNote = await dom.locator('.gtt-note').innerText();
 check(/page mode · 3 events read/.test(domNote), `dom-mode widget shows read counter (got "${domNote}")`);
 
@@ -388,7 +388,7 @@ await popupDom.goto(`file://${path.join(root, 'popup.html')}`);
 await popupDom.waitForTimeout(400);
 check((await popupDom.locator('.card').count()) === 1, 'dom-mode popup renders tracked card');
 const popupDomValue = await popupDom.locator('.card .value').first().innerText();
-check(popupDomValue === '4 / 20h this week', `dom-mode popup current week from store (got "${popupDomValue}")`);
+check(popupDomValue === '4 / 20h this week · −16h', `dom-mode popup current week from store (got "${popupDomValue}")`);
 check(!(await popupDom.locator('#calendarsSection').isVisible()), 'calendars section hidden in dom mode');
 check(await popupDom.locator('#domSection').isVisible(), 'source section visible in dom mode');
 

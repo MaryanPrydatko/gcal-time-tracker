@@ -81,13 +81,14 @@
       label.className = 'gtt-name';
       label.textContent = row.name;
       const over = row.target && row.hours > row.target ? row.hours - row.target : 0;
+      const under = row.target && row.hours < row.target ? row.target - row.hours : 0;
+      const delta = over ? ` · +${fmtH(over)}h` : under ? ` · −${fmtH(under)}h` : '';
       const value = document.createElement('span');
       value.className = 'gtt-value';
-      value.textContent = row.target
-        ? `${fmtH(row.hours)} / ${row.target}h${over ? ` · +${fmtH(over)}h` : ''}`
-        : `${fmtH(row.hours)}h`;
+      value.textContent = row.target ? `${fmtH(row.hours)} / ${row.target}h${delta}` : `${fmtH(row.hours)}h`;
       if (row.target && row.hours >= row.target) value.classList.add('gtt-hit');
       if (over) value.classList.add('gtt-over');
+      if (under) value.classList.add('gtt-under');
       const bar = document.createElement('div');
       bar.className = 'gtt-bar';
       const fill = document.createElement('div');
@@ -96,6 +97,7 @@
       fill.style.width = `${pct}%`;
       if (row.target && row.hours >= row.target) fill.classList.add('gtt-hit');
       if (over) fill.classList.add('gtt-over');
+      if (under) fill.classList.add('gtt-under');
       bar.appendChild(fill);
       line.append(label, value, bar);
       card.appendChild(line);

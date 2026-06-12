@@ -84,6 +84,7 @@ const renderStats = (occurrences) => {
     const avg = past.reduce((s, r) => s + r.hours, 0) / Math.max(past.length, 1);
     const max = Math.max(...rows.map((r) => r.hours), target || 0, 1);
     const over = target && current.hours > target ? current.hours - target : 0;
+    const under = target && current.hours < target ? target - current.hours : 0;
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -94,11 +95,13 @@ const renderStats = (occurrences) => {
     title.textContent = name;
     const value = document.createElement('span');
     value.className = 'value';
+    const delta = over ? ` · +${fmtH(over)}h over` : under ? ` · −${fmtH(under)}h` : '';
     value.textContent = target
-      ? `${fmtH(current.hours)} / ${target}h this week${over ? ` · +${fmtH(over)}h over` : ''}`
+      ? `${fmtH(current.hours)} / ${target}h this week${delta}`
       : `${fmtH(current.hours)}h this week`;
     if (target && current.hours >= target) value.classList.add('hit');
     if (over) value.classList.add('over');
+    if (under) value.classList.add('under');
     top.append(title, value);
     card.appendChild(top);
 
@@ -110,6 +113,7 @@ const renderStats = (occurrences) => {
     fill.style.width = `${pct}%`;
     if (target && current.hours >= target) fill.classList.add('hit');
     if (over) fill.classList.add('over');
+    if (under) fill.classList.add('under');
     barWrap.appendChild(fill);
     card.appendChild(barWrap);
 
@@ -133,6 +137,8 @@ const renderStats = (occurrences) => {
     if (target && over) {
       const adjusted = Math.max(0, target - over);
       nextEl.textContent = `Next week: ${target} − ${fmtH(over)} = ${fmtH(adjusted)}h · ${fmtH(next.hours)}h planned`;
+    } else if (target && under) {
+      nextEl.textContent = `Next week: ${target} + ${fmtH(under)} = ${fmtH(target + under)}h · ${fmtH(next.hours)}h planned`;
     } else if (target) {
       nextEl.textContent = `Next week: ${target}h target · ${fmtH(next.hours)}h planned`;
     } else {
