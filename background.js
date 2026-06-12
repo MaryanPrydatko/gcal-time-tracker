@@ -6,8 +6,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     const { gttGcalPath = '/calendar/u/0/', gttDomWeeksAt = 0 } =
       await chrome.storage.local.get(['gttGcalPath', 'gttDomWeeksAt']);
+    // msg.week ("2026/6/8") targets a specific week; default is the current one.
+    const weekPath = /^\d{4}\/\d{1,2}\/\d{1,2}$/.test(msg.week || '') ? `r/week/${msg.week}` : 'r/week';
     const tab = await chrome.tabs.create({
-      url: `https://calendar.google.com${gttGcalPath}r/week`,
+      url: `https://calendar.google.com${gttGcalPath}${weekPath}`,
       active: false,
     });
 

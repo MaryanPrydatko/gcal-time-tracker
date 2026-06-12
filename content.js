@@ -160,9 +160,10 @@
     if (onNotion) {
       const note = document.createElement('div');
       note.className = 'gtt-note';
-      note.textContent = domWeeksAt
-        ? `this week · from Google Calendar · ${agoText(domWeeksAt)}`
-        : 'open calendar.google.com once to feed data';
+      const hasViewData = ((domWeeks && domWeeks[viewWeekTs]) || []).length > 0;
+      note.textContent = hasViewData
+        ? `from Google Calendar · ${agoText(domWeeksAt)}`
+        : 'fetching this week from Google Calendar…';
       card.appendChild(note);
 
       const dbg = document.createElement('button');
@@ -224,10 +225,32 @@
     domWeeksAt = got.gttDomWeeksAt || 0;
   };
 
+  // Ask the background worker to scan a specific week on calendar.google.com
+  // when Notion shows a week we have no (or stale) data for. Throttled.
+  const weekFetches = new Map(); // weekTs -> last request time
+  const maybeFetchWeek = (ts) => {
+    const hasData = (domWeeks[ts] || []).length > 0;
+    const curTs = CalHours.weekStart(new Date()).getTime();
+    const stale = ts === curTs ? Date.now() - domWeeksAt > 15 * 60 * 1000 : !hasData;
+    if (!stale) return;
+    if (Date.now() - (weekFetches.get(ts) || 0) < 5 * 60 * 1000) return;
+    weekFetches.set(ts, Date.now());
+    const d = new Date(ts);
+    chrome.runtime
+      .sendMessage?.({
+        type: 'gtt-refresh-gcal',
+        week: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`,
+      })
+      ?.catch?.(() => {});
+  };
+
   const refreshNotion = async () => {
     await loadDomWeeks();
-    viewWeekTs = CalHours.weekStart(new Date()).getTime();
-    lastRows = computeRows((domWeeks[viewWeekTs] || []).map(hydrate));
+    // Follow the week shown in Notion's tab title ("8 – 14 Jun 2026 · …").
+    const viewDate = CalDom.notionViewDate(document.title) || new Date();
+    viewWeekTs = CalHours.weekStart(viewDate).getTime();
+    lastRows = computeRows((domWeeks[viewWeekTs] || []).map(hydrate), new Date(viewWeekTs));
+    maybeFetchWeek(viewWeekTs);
     const sig = JSON.stringify([viewWeekTs, lastRows, domWeeksAt, settings.widgetCollapsed]);
     if (sig !== renderSig) {
       renderSig = sig;
@@ -301,6 +324,18 @@
     debounce = setTimeout(refreshDom, 150);
   });
   observer.observe(document.body, { childList: true, subtree: true });
+
+  // Notion is an SPA — week navigation surfaces only in the tab title.
+  if (onNotion) {
+    const titleEl = document.querySelector('title');
+    if (titleEl) {
+      let titleDebounce;
+      new MutationObserver(() => {
+        clearTimeout(titleDebounce);
+        titleDebounce = setTimeout(refreshNotion, 250);
+      }).observe(titleEl, { childList: true });
+    }
+  }
 
   refresh();
   // The grid often isn't rendered yet at document_idle — retry shortly.

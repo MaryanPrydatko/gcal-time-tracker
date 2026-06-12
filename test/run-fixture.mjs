@@ -419,6 +419,74 @@ const notionNote = await notion.locator('.gtt-note').innerText();
 check(/from Google Calendar/.test(notionNote), `notion widget labels its data source (got "${notionNote}")`);
 check((await notion.locator('.gtt-debug').count()) === 1, 'notion widget offers page-info copy helper');
 
+// Title parsing (pure function, fixed inputs)
+const nv = await notion.evaluate(() => ({
+  sameMonth: +CalDom.notionViewDate('8 – 14 Jun 2026 · Notion Calendar'),
+  crossMonth: +CalDom.notionViewDate('29 Jun – 5 Jul 2026 · Notion Calendar'),
+  crossYear: +CalDom.notionViewDate('29 Dec 2025 – 4 Jan 2026 · Notion Calendar'),
+  monthView: CalDom.notionViewDate('June 2026 · Notion Calendar'),
+}));
+check(nv.sameMonth === +new Date(2026, 5, 8), 'notion title "8 – 14 Jun 2026" parsed');
+check(nv.crossMonth === +new Date(2026, 5, 29), 'notion title "29 Jun – 5 Jul 2026" parsed');
+check(nv.crossYear === +new Date(2025, 11, 29), 'notion title "29 Dec 2025 – 4 Jan 2026" parsed');
+check(nv.monthView === null, 'notion month-view title returns null');
+
+// --- 6b. Notion follows the viewed week from the tab title -----------------
+const monNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const notionTitle = (d1, d2) => {
+  if (d1.getFullYear() !== d2.getFullYear())
+    return `${d1.getDate()} ${monNames[d1.getMonth()]} ${d1.getFullYear()} – ${d2.getDate()} ${monNames[d2.getMonth()]} ${d2.getFullYear()} · Notion Calendar`;
+  if (d1.getMonth() !== d2.getMonth())
+    return `${d1.getDate()} ${monNames[d1.getMonth()]} – ${d2.getDate()} ${monNames[d2.getMonth()]} ${d1.getFullYear()} · Notion Calendar`;
+  return `${d1.getDate()} – ${d2.getDate()} ${monNames[d1.getMonth()]} ${d1.getFullYear()} · Notion Calendar`;
+};
+const prevWeekMon = at(cur, -7, 0);
+const prevWeekSun = at(cur, -1, 0);
+
+const notionPrev = await browser.newPage();
+notionPrev.on('pageerror', (e) => errors.push(String(e)));
+await notionPrev.route('**/*', (r) =>
+  r.fulfill({
+    contentType: 'text/html',
+    body: `<head><title>${notionTitle(prevWeekMon, prevWeekSun)}</title></head><body></body>`,
+  })
+);
+await notionPrev.addInitScript(`
+  const localStore = {
+    gttDomWeeks: ${JSON.stringify({ [+prevWeekMon]: [{ s: +at(cur, -7, 9), e: +at(cur, -7, 17), m: 'work' }] })},
+    gttDomWeeksAt: 1,
+  };
+  window.chrome = {
+    storage: {
+      sync: {
+        get: async (d) => ({ ...d, source: 'dom', tracked: [{ name: 'work', target: 20 }] }),
+        set: async () => {},
+      },
+      local: {
+        get: async (k) => {
+          if (typeof k === 'string') return { [k]: localStore[k] };
+          if (Array.isArray(k)) return Object.fromEntries(k.map((key) => [key, localStore[key]]));
+          return { ...k, ...localStore };
+        },
+        set: async (o) => Object.assign(localStore, o),
+      },
+      onChanged: { addListener: () => {} },
+    },
+    runtime: { getManifest: () => ({ version: '1.0.0' }) },
+  };
+`);
+await notionPrev.goto('https://calendar.notion.so/');
+await notionPrev.addStyleTag({ path: path.join(root, 'content.css') });
+await notionPrev.addScriptTag({ path: path.join(root, 'vendor', 'ical.min.js') });
+await notionPrev.addScriptTag({ path: path.join(root, 'lib', 'hours.js') });
+await notionPrev.addScriptTag({ path: path.join(root, 'dom-reader.js') });
+await notionPrev.addScriptTag({ path: path.join(root, 'content.js') });
+await notionPrev.waitForTimeout(400);
+const notionPrevTitle = await notionPrev.locator('.gtt-head strong').innerText();
+check(/^Week of /.test(notionPrevTitle), `notion follows viewed week from title (got "${notionPrevTitle}")`);
+const notionPrevValue = await notionPrev.locator('.gtt-value').first().innerText();
+check(notionPrevValue === '8 / 20h · −12h', `notion shows viewed week's hours (got "${notionPrevValue}")`);
+
 check(errors.length === 0, `no page errors${errors.length ? ` (${errors[0]})` : ''}`);
 
 await browser.close();

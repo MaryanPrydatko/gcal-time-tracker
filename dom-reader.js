@@ -124,5 +124,24 @@
     return dates[Math.floor(dates.length / 2)];
   };
 
-  globalThis.CalDom = { scan, parseRange, decodeDatekey, visibleWeekDate };
+  // Notion Calendar exposes the viewed range in the tab title:
+  //   "8 – 14 Jun 2026 · Notion Calendar"
+  //   "29 Jun – 5 Jul 2026 · Notion Calendar"
+  //   "29 Dec 2025 – 4 Jan 2026 · Notion Calendar"
+  // Returns the first day of the viewed range, or null (e.g. month view).
+  const MONTH_SHORT = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  const notionViewDate = (title) => {
+    const t = (title || '').toLowerCase();
+    const year = (t.match(/\b(20\d{2})\b/) || [])[1];
+    if (!year) return null;
+    // "8 – 14 jun 2026": both day numbers before the month name
+    let m = t.match(/\b(\d{1,2})\s*[–—-]\s*\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);
+    // "29 jun – 5 jul 2026" / "12 jun 2026": month right after the first day
+    if (!m) m = t.match(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);
+    if (!m) return null;
+    const d = new Date(Number(year), MONTH_SHORT[m[2]], Number(m[1]));
+    return Number.isNaN(+d) ? null : d;
+  };
+
+  globalThis.CalDom = { scan, parseRange, decodeDatekey, visibleWeekDate, notionViewDate };
 })();

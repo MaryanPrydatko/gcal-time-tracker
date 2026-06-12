@@ -62,9 +62,13 @@ Some Workspace admins hide the secret iCal address (you'll only see *Public* fie
 
 ## Notion Calendar
 
-If you use **Notion Calendar in the browser** (`calendar.notion.so`), the same widget appears there — fed by the data collected from your Google Calendar tabs/feeds (Notion Calendar is a view over the same calendars). It live-updates whenever a Google Calendar tab refreshes the shared cache and shows a freshness label ("from Google Calendar · 2h ago").
+If you use **Notion Calendar in the browser** (`calendar.notion.so`), the same widget appears there — fed by Google Calendar data (Notion Calendar is a view over the same calendars):
 
-The Notion Calendar **desktop app** can't be supported — browser extensions cannot inject into Electron apps. Reading Notion Calendar's own DOM natively is on the roadmap.
+- **Follows the week you're viewing** — parsed from Notion's tab title ("8 – 14 Jun 2026 · Notion Calendar")
+- **Auto-fetches missing weeks**: navigating to a week with no data makes the background worker silently open that exact week on calendar.google.com, scan it, and close the tab — the widget fills in seconds later
+- Live-updates whenever any Google Calendar tab refreshes the shared cache, with a freshness label
+
+The Notion Calendar **desktop app** can't be supported — browser extensions cannot inject into Electron apps.
 
 ## Development & testing
 
