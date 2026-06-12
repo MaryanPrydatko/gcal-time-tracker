@@ -175,7 +175,7 @@
   const observer = new MutationObserver(() => {
     if (settings.source !== 'dom') return;
     clearTimeout(debounce);
-    debounce = setTimeout(refreshDom, 1500);
+    debounce = setTimeout(refreshDom, 400);
   });
   observer.observe(document.body, { childList: true, subtree: true });
 

@@ -77,10 +77,9 @@ const renderStats = (occurrences) => {
   if (!state.tracked.length) return;
 
   for (const { name, target } of state.tracked) {
-    const rows = CalHours.weeklyHours(occurrences, name, WEEKS_BACK, new Date(), 1);
-    const next = rows[rows.length - 1];
-    const current = rows[rows.length - 2];
-    const past = rows.slice(0, -2);
+    const rows = CalHours.weeklyHours(occurrences, name, WEEKS_BACK);
+    const current = rows[rows.length - 1];
+    const past = rows.slice(0, -1);
     const avg = past.reduce((s, r) => s + r.hours, 0) / Math.max(past.length, 1);
     const max = Math.max(...rows.map((r) => r.hours), target || 0, 1);
     const over = target && current.hours > target ? current.hours - target : 0;
@@ -131,21 +130,6 @@ const renderStats = (occurrences) => {
     history.appendChild(avgEl);
     card.appendChild(history);
 
-    // Next week: carry overage into an adjusted target + show planned hours.
-    const nextEl = document.createElement('div');
-    nextEl.className = 'next';
-    if (target && over) {
-      const adjusted = Math.max(0, target - over);
-      nextEl.textContent = `Next week: ${target} − ${fmtH(over)} = ${fmtH(adjusted)}h · ${fmtH(next.hours)}h planned`;
-    } else if (target && under) {
-      nextEl.textContent = `Next week: ${target} + ${fmtH(under)} = ${fmtH(target + under)}h · ${fmtH(next.hours)}h planned`;
-    } else if (target) {
-      nextEl.textContent = `Next week: ${target}h target · ${fmtH(next.hours)}h planned`;
-    } else {
-      nextEl.textContent = `Next week: ${fmtH(next.hours)}h planned`;
-    }
-    card.appendChild(nextEl);
-
     cards.appendChild(card);
   }
 };
@@ -171,7 +155,7 @@ const refresh = async () => {
     return;
   }
   $('status').textContent = 'Loading calendar…';
-  const { from, to } = CalHours.range(WEEKS_BACK, new Date(), 1);
+  const { from, to } = CalHours.range(WEEKS_BACK);
   try {
     const texts = await Promise.all(
       state.icsUrls.map((u) => fetch(u).then((r) => {

@@ -100,18 +100,13 @@ await page.addScriptTag({ path: path.join(root, 'vendor', 'ical.min.js') });
 await page.addScriptTag({ path: path.join(root, 'lib', 'hours.js') });
 
 const sums = await page.evaluate((icsText) => {
-  const { from, to } = CalHours.range(4, new Date(), 1);
+  const { from, to } = CalHours.range(4);
   const occ = CalHours.expandICS(icsText, from, to);
   const hours = (q) => CalHours.weeklyHours(occ, q, 4).map((r) => Math.round(r.hours * 10) / 10);
-  const forward = CalHours.weeklyHours(occ, 'work', 4, new Date(), 1).map((r) => Math.round(r.hours * 10) / 10);
-  return { work: hours('work'), gym: hours('gym'), conf: hours('conference'), forward };
+  return { work: hours('work'), gym: hours('gym'), conf: hours('conference') };
 }, ics);
 
 check(JSON.stringify(sums.work) === '[8,8,8,2,10]', `work weeks = [8,8,8,2,10] (got ${JSON.stringify(sums.work)})`);
-check(
-  JSON.stringify(sums.forward) === '[8,8,8,2,10,8]',
-  `forward week included: [..,10,8] (got ${JSON.stringify(sums.forward)})`
-);
 check(JSON.stringify(sums.gym) === '[0,0,0,0,1]', `gym weeks = [0,0,0,0,1] (got ${JSON.stringify(sums.gym)})`);
 check(sums.conf.every((h) => h === 0), 'all-day events ignored');
 
@@ -148,16 +143,6 @@ check(
 );
 const avg = await popup.locator('.card .avg').first().innerText();
 check(avg === 'avg 6.5h', `popup shows past-weeks average (got "${avg}")`);
-const workNext = await popup.locator('.card .next').first().innerText();
-check(
-  workNext === 'Next week: 30 + 20 = 50h · 8h planned',
-  `deficit carried into next week's target (got "${workNext}")`
-);
-const gymNext = await popup.locator('.card .next').nth(1).innerText();
-check(
-  gymNext === 'Next week: 0.5 − 0.5 = 0h · 0h planned',
-  `overage carried into next week's target (got "${gymNext}")`
-);
 check(!(await popup.locator('#setup').isVisible()), 'setup section hidden once configured');
 
 // --- 2b. popup guides the user when the URL 404s (public-address mistake) --
