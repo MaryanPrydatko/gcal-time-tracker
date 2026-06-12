@@ -119,6 +119,7 @@ const stub = (icsText) => `
           tracked: [{ name: 'work', target: 30 }, { name: 'gym', target: 0 }] }),
         set: async () => {},
       },
+      local: { get: async () => ({}), set: async () => {} },
       onChanged: { addListener: () => {} },
     },
     runtime: { getManifest: () => ({ version: '1.0.0' }) },
@@ -140,6 +141,29 @@ check(gymValue === '1h this week', `popup gym card shows plain hours (got "${gym
 const avg = await popup.locator('.card .avg').first().innerText();
 check(avg === 'avg 6.5h', `popup shows past-weeks average (got "${avg}")`);
 check(!(await popup.locator('#setup').isVisible()), 'setup section hidden once configured');
+
+// --- 2b. popup guides the user when the URL 404s (public-address mistake) --
+const popup404 = await browser.newPage();
+await popup404.addInitScript(`
+  window.chrome = {
+    storage: {
+      sync: {
+        get: async (d) => ({ ...d,
+          icsUrls: ['https://calendar.google.com/calendar/ical/x%40y/public/basic.ics'],
+          tracked: [{ name: 'work', target: 0 }] }),
+        set: async () => {},
+      },
+      local: { get: async () => ({}), set: async () => {} },
+      onChanged: { addListener: () => {} },
+    },
+    runtime: { getManifest: () => ({ version: '1.0.0' }) },
+  };
+  window.fetch = async () => ({ ok: false, status: 404, text: async () => '' });
+`);
+await popup404.goto(`file://${path.join(root, 'popup.html')}`);
+await popup404.waitForTimeout(400);
+const status404 = await popup404.locator('#status').innerText();
+check(status404.includes('Secret address'), `404 shows secret-address hint (got "${status404}")`);
 
 // --- 3. calendar widget ---------------------------------------------------
 const widget = await browser.newPage();

@@ -41,6 +41,7 @@ const renderChips = (el, items, label, onRemove) => {
   items.forEach((item, i) => {
     const chip = document.createElement('span');
     chip.className = 'chip';
+    chip.title = typeof item === 'string' ? item : item.name;
     const text = document.createElement('span');
     text.textContent = typeof item === 'string' ? maskUrl(item) : `${item.name}${item.target ? ` · ${item.target}h` : ''}`;
     const remove = document.createElement('button');
@@ -139,28 +140,44 @@ const refresh = async () => {
     );
     const occurrences = texts.flatMap((t) => CalHours.expandICS(t, from, to));
     renderStats(occurrences);
+    chrome.storage.local.set({
+      lastStats: { occ: occurrences.map((o) => ({ s: +o.start, e: +o.end, m: o.summary })) },
+    });
     $('status').textContent = `Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   } catch (e) {
-    $('status').textContent = `Couldn't load calendar (${e.message}) — check the URL`;
+    const msg = String(e.message || e);
+    $('status').textContent = /404/.test(msg)
+      ? 'Google returned 404 — you likely copied the Public address. Remove it (×) and use "Secret address in iCal format" (contains /private-…/)'
+      : `Couldn't load calendar (${msg}) — check the URL`;
   }
 };
 
-$('urlForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const url = $('urlInput').value.trim();
-  if (!url.startsWith('https://')) return;
+const addUrl = async (raw, inputEl) => {
+  // Google copies sometimes come as webcal:// and with stray whitespace.
+  const url = raw.trim().replace(/^webcal:\/\//i, 'https://');
+  if (!/^https:\/\/.+\.ics(\?.*)?$/i.test(url)) {
+    $('status').textContent = 'That doesn\'t look like an .ics address — copy "Secret address in iCal format"';
+    return;
+  }
+  if (url.includes('/public/')) {
+    $('status').textContent =
+      'That\'s the PUBLIC address (404 unless the calendar is public). Copy "Secret address in iCal format" — it contains /private-…/';
+    return;
+  }
+  if (state.icsUrls.includes(url)) return;
   await save({ icsUrls: [...state.icsUrls, url] });
-  $('urlInput').value = '';
+  inputEl.value = '';
   refresh();
+};
+
+$('urlForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  addUrl($('urlInput').value, $('urlInput'));
 });
 
-$('moreUrlForm').addEventListener('submit', async (e) => {
+$('moreUrlForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  const url = $('moreUrlInput').value.trim();
-  if (!url.startsWith('https://') || state.icsUrls.includes(url)) return;
-  await save({ icsUrls: [...state.icsUrls, url] });
-  $('moreUrlInput').value = '';
-  refresh();
+  addUrl($('moreUrlInput').value, $('moreUrlInput'));
 });
 
 $('trackedForm').addEventListener('submit', async (e) => {
@@ -178,6 +195,12 @@ const init = async () => {
   state = await chrome.storage.sync.get(DEFAULTS);
   $('version').textContent = `v${chrome.runtime.getManifest().version}`;
   render();
+  // Show cached stats instantly (works on any tab), then refresh.
+  const { lastStats } = await chrome.storage.local.get('lastStats');
+  if (lastStats?.occ && state.tracked.length) {
+    renderStats(lastStats.occ.map((o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m })));
+    $('status').textContent = 'Cached — refreshing…';
+  }
   refresh();
 };
 

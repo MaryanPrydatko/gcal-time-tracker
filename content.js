@@ -95,7 +95,7 @@
         return { name, target, hours: rows[rows.length - 1].hours };
       });
     } catch {
-      lastRows = [];
+      // Keep the last good rows — transient fetch failures shouldn't blank the widget.
     }
     render();
   };

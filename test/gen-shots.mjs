@@ -55,6 +55,7 @@ const stub = `
           tracked: [{ name: 'work', target: 30 }, { name: 'gym', target: 3 }] }),
         set: async () => {},
       },
+      local: { get: async () => ({}), set: async () => {} },
       onChanged: { addListener: () => {} },
     },
     runtime: { getManifest: () => ({ version: '1.0.0' }) },
