@@ -417,8 +417,6 @@ const notionValue = await notion.locator('.gtt-value').first().innerText();
 check(notionValue === '4 / 20h · −16h', `notion widget shows GCal-fed hours (got "${notionValue}")`);
 const notionNote = await notion.locator('.gtt-note').innerText();
 check(/from Google Calendar/.test(notionNote), `notion widget labels its data source (got "${notionNote}")`);
-check((await notion.locator('.gtt-debug').count()) === 1, 'notion widget offers page-info copy helper');
-
 // Title parsing (pure function, fixed inputs)
 const nv = await notion.evaluate(() => ({
   sameMonth: +CalDom.notionViewDate('8 – 14 Jun 2026 · Notion Calendar'),

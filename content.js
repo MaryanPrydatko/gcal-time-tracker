@@ -23,40 +23,6 @@
     chrome.storage.local.set({ gttGcalPath: m ? m[0] : '/calendar/u/0/' });
   }
 
-  // Collects a compact sample of date/time-bearing elements so the Notion
-  // Calendar DOM can be supported without access to a logged-in session.
-  // Triggered manually by the user from the widget; copied to clipboard.
-  const collectNotionDebug = () => {
-    const out = { url: location.href, title: document.title, candidates: [] };
-    const seen = new Set();
-    const datey =
-      /\d{1,2}[:.]\d{2}|\b\d{4}-\d{2}-\d{2}\b|\b(am|pm)\b|\b(mon|tue|wed|thu|fri|sat|sun|january|february|march|april|may|june|july|august|september|october|november|december)\b/i;
-    const els = document.querySelectorAll('[aria-label], [title], [data-testid], [data-date], time');
-    for (const el of els) {
-      const label =
-        el.getAttribute('aria-label') ||
-        el.getAttribute('title') ||
-        el.getAttribute('data-date') ||
-        el.getAttribute('datetime') ||
-        '';
-      const text = (el.textContent || '').trim().slice(0, 80);
-      if (!datey.test(`${label} ${text}`)) continue;
-      const shape = `${el.tagName}|${String(el.className).slice(0, 80)}`;
-      if (seen.has(shape)) continue; // one sample per element shape
-      seen.add(shape);
-      out.candidates.push({
-        tag: el.tagName.toLowerCase(),
-        cls: String(el.className).slice(0, 100) || undefined,
-        testid: el.getAttribute('data-testid') || undefined,
-        ariaLabel: label.slice(0, 160) || undefined,
-        text: text || undefined,
-        html: el.outerHTML.slice(0, 400),
-      });
-      if (out.candidates.length >= 40) break;
-    }
-    return JSON.stringify(out, null, 1);
-  };
-
   const agoText = (ts) => {
     const m = Math.round((Date.now() - ts) / 60000);
     if (m < 1) return 'just now';
@@ -165,22 +131,6 @@
         ? `from Google Calendar · ${agoText(domWeeksAt)}`
         : 'fetching this week from Google Calendar…';
       card.appendChild(note);
-
-      const dbg = document.createElement('button');
-      dbg.type = 'button';
-      dbg.className = 'gtt-debug';
-      dbg.textContent = 'enable week-follow: copy page info';
-      dbg.addEventListener('click', async () => {
-        const dump = collectNotionDebug();
-        try {
-          await navigator.clipboard.writeText(dump);
-          dbg.textContent = 'copied — paste it to the dev';
-        } catch {
-          console.log('[GTT debug]', dump);
-          dbg.textContent = 'copy blocked — see console instead';
-        }
-      });
-      card.appendChild(dbg);
     } else if (settings.source === 'dom') {
       const note = document.createElement('div');
       note.className = 'gtt-note';
