@@ -100,13 +100,18 @@ await page.addScriptTag({ path: path.join(root, 'vendor', 'ical.min.js') });
 await page.addScriptTag({ path: path.join(root, 'lib', 'hours.js') });
 
 const sums = await page.evaluate((icsText) => {
-  const { from, to } = CalHours.range(4);
+  const { from, to } = CalHours.range(4, new Date(), 1);
   const occ = CalHours.expandICS(icsText, from, to);
   const hours = (q) => CalHours.weeklyHours(occ, q, 4).map((r) => Math.round(r.hours * 10) / 10);
-  return { work: hours('work'), gym: hours('gym'), conf: hours('conference') };
+  const forward = CalHours.weeklyHours(occ, 'work', 4, new Date(), 1).map((r) => Math.round(r.hours * 10) / 10);
+  return { work: hours('work'), gym: hours('gym'), conf: hours('conference'), forward };
 }, ics);
 
 check(JSON.stringify(sums.work) === '[8,8,8,2,10]', `work weeks = [8,8,8,2,10] (got ${JSON.stringify(sums.work)})`);
+check(
+  JSON.stringify(sums.forward) === '[8,8,8,2,10,8]',
+  `forward week included: [..,10,8] (got ${JSON.stringify(sums.forward)})`
+);
 check(JSON.stringify(sums.gym) === '[0,0,0,0,1]', `gym weeks = [0,0,0,0,1] (got ${JSON.stringify(sums.gym)})`);
 check(sums.conf.every((h) => h === 0), 'all-day events ignored');
 
@@ -116,7 +121,7 @@ const stub = (icsText) => `
     storage: {
       sync: {
         get: async (d) => ({ ...d, icsUrls: ['https://example.test/cal.ics'],
-          tracked: [{ name: 'work', target: 30 }, { name: 'gym', target: 0 }] }),
+          tracked: [{ name: 'work', target: 30 }, { name: 'gym', target: 0.5 }] }),
         set: async () => {},
       },
       local: { get: async () => ({}), set: async () => {} },
@@ -137,9 +142,22 @@ check((await popup.locator('.card').count()) === 2, 'popup renders a card per tr
 const workValue = await popup.locator('.card .value').first().innerText();
 check(workValue === '10 / 30h this week', `popup work card shows progress vs target (got "${workValue}")`);
 const gymValue = await popup.locator('.card .value').nth(1).innerText();
-check(gymValue === '1h this week', `popup gym card shows plain hours (got "${gymValue}")`);
+check(
+  gymValue === '1 / 0.5h this week · +0.5h over',
+  `popup shows overage explicitly (got "${gymValue}")`
+);
 const avg = await popup.locator('.card .avg').first().innerText();
 check(avg === 'avg 6.5h', `popup shows past-weeks average (got "${avg}")`);
+const workNext = await popup.locator('.card .next').first().innerText();
+check(
+  workNext === 'Next week: 30h target · 8h planned',
+  `next week shows target + planned hours (got "${workNext}")`
+);
+const gymNext = await popup.locator('.card .next').nth(1).innerText();
+check(
+  gymNext === 'Next week: 0.5 − 0.5 = 0h · 0h planned',
+  `overage carried into next week's target (got "${gymNext}")`
+);
 check(!(await popup.locator('#setup').isVisible()), 'setup section hidden once configured');
 
 // --- 2b. popup guides the user when the URL 404s (public-address mistake) --
@@ -293,7 +311,7 @@ await prev.addInitScript(`
   window.chrome = {
     storage: {
       sync: {
-        get: async (d) => ({ ...d, source: 'dom', tracked: [{ name: 'work', target: 20 }] }),
+        get: async (d) => ({ ...d, source: 'dom', tracked: [{ name: 'work', target: 5 }] }),
         set: async () => {},
       },
       local: {
@@ -316,7 +334,10 @@ await prev.waitForTimeout(400);
 const prevTitle = await prev.locator('.gtt-head strong').innerText();
 check(/^Week of /.test(prevTitle), `widget titled by viewed week (got "${prevTitle}")`);
 const prevValue = await prev.locator('.gtt-value').first().innerText();
-check(prevValue === '8 / 20h', `widget shows viewed week's hours (got "${prevValue}")`);
+check(
+  prevValue === '8 / 5h · +3h',
+  `widget shows viewed week's hours with overage (got "${prevValue}")`
+);
 
 // --- 4c. fresh install defaults to page-reading mode -----------------------
 const fresh = await browser.newPage();

@@ -80,10 +80,14 @@
       const label = document.createElement('span');
       label.className = 'gtt-name';
       label.textContent = row.name;
+      const over = row.target && row.hours > row.target ? row.hours - row.target : 0;
       const value = document.createElement('span');
       value.className = 'gtt-value';
-      value.textContent = row.target ? `${fmtH(row.hours)} / ${row.target}h` : `${fmtH(row.hours)}h`;
+      value.textContent = row.target
+        ? `${fmtH(row.hours)} / ${row.target}h${over ? ` · +${fmtH(over)}h` : ''}`
+        : `${fmtH(row.hours)}h`;
       if (row.target && row.hours >= row.target) value.classList.add('gtt-hit');
+      if (over) value.classList.add('gtt-over');
       const bar = document.createElement('div');
       bar.className = 'gtt-bar';
       const fill = document.createElement('div');
@@ -91,6 +95,7 @@
       const pct = row.target ? Math.min(100, (row.hours / row.target) * 100) : 100;
       fill.style.width = `${pct}%`;
       if (row.target && row.hours >= row.target) fill.classList.add('gtt-hit');
+      if (over) fill.classList.add('gtt-over');
       bar.appendChild(fill);
       line.append(label, value, bar);
       card.appendChild(line);

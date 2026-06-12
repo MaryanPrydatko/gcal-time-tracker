@@ -173,6 +173,16 @@ button[type="submit"]:hover {
   color: #81c995;
 }
 
+.value.over {
+  color: #fdd663;
+}
+
+.next {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9aa0a6;
+}
+
 .bar {
   margin-top: 8px;
   height: 8px;
@@ -190,6 +200,10 @@ button[type="submit"]:hover {
 
 .fill.hit {
   background: #81c995;
+}
+
+.fill.over {
+  background: #fdd663;
 }
 
 .history {

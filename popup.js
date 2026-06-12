@@ -77,11 +77,13 @@ const renderStats = (occurrences) => {
   if (!state.tracked.length) return;
 
   for (const { name, target } of state.tracked) {
-    const rows = CalHours.weeklyHours(occurrences, name, WEEKS_BACK);
-    const current = rows[rows.length - 1];
-    const past = rows.slice(0, -1);
+    const rows = CalHours.weeklyHours(occurrences, name, WEEKS_BACK, new Date(), 1);
+    const next = rows[rows.length - 1];
+    const current = rows[rows.length - 2];
+    const past = rows.slice(0, -2);
     const avg = past.reduce((s, r) => s + r.hours, 0) / Math.max(past.length, 1);
     const max = Math.max(...rows.map((r) => r.hours), target || 0, 1);
+    const over = target && current.hours > target ? current.hours - target : 0;
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -93,9 +95,10 @@ const renderStats = (occurrences) => {
     const value = document.createElement('span');
     value.className = 'value';
     value.textContent = target
-      ? `${fmtH(current.hours)} / ${target}h this week`
+      ? `${fmtH(current.hours)} / ${target}h this week${over ? ` · +${fmtH(over)}h over` : ''}`
       : `${fmtH(current.hours)}h this week`;
     if (target && current.hours >= target) value.classList.add('hit');
+    if (over) value.classList.add('over');
     top.append(title, value);
     card.appendChild(top);
 
@@ -106,6 +109,7 @@ const renderStats = (occurrences) => {
     const pct = target ? Math.min(100, (current.hours / target) * 100) : (current.hours / max) * 100;
     fill.style.width = `${pct}%`;
     if (target && current.hours >= target) fill.classList.add('hit');
+    if (over) fill.classList.add('over');
     barWrap.appendChild(fill);
     card.appendChild(barWrap);
 
@@ -122,6 +126,19 @@ const renderStats = (occurrences) => {
     avgEl.textContent = `avg ${fmtH(avg)}h`;
     history.appendChild(avgEl);
     card.appendChild(history);
+
+    // Next week: carry overage into an adjusted target + show planned hours.
+    const nextEl = document.createElement('div');
+    nextEl.className = 'next';
+    if (target && over) {
+      const adjusted = Math.max(0, target - over);
+      nextEl.textContent = `Next week: ${target} − ${fmtH(over)} = ${fmtH(adjusted)}h · ${fmtH(next.hours)}h planned`;
+    } else if (target) {
+      nextEl.textContent = `Next week: ${target}h target · ${fmtH(next.hours)}h planned`;
+    } else {
+      nextEl.textContent = `Next week: ${fmtH(next.hours)}h planned`;
+    }
+    card.appendChild(nextEl);
 
     cards.appendChild(card);
   }
@@ -148,7 +165,7 @@ const refresh = async () => {
     return;
   }
   $('status').textContent = 'Loading calendar…';
-  const { from, to } = CalHours.range(WEEKS_BACK);
+  const { from, to } = CalHours.range(WEEKS_BACK, new Date(), 1);
   try {
     const texts = await Promise.all(
       state.icsUrls.map((u) => fetch(u).then((r) => {
