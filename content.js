@@ -11,6 +11,19 @@
   let domEventsRead = 0;
   let viewWeekTs = null; // week shown in the widget (dom mode follows the view)
 
+  // On Notion Calendar there is nothing to scan (its DOM is not supported
+  // yet) — the widget renders from the data collected on calendar.google.com
+  // and live-updates via storage events.
+  const onNotion = location.hostname.endsWith('notion.so');
+
+  const agoText = (ts) => {
+    const m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.round(m / 60);
+    return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
+  };
+
   const fmtH = (h) => (Math.round(h * 10) / 10).toString();
 
   const root = document.createElement('div');
@@ -103,7 +116,14 @@
       card.appendChild(line);
     }
 
-    if (settings.source === 'dom') {
+    if (onNotion) {
+      const note = document.createElement('div');
+      note.className = 'gtt-note';
+      note.textContent = domWeeksAt
+        ? `from Google Calendar · ${agoText(domWeeksAt)}`
+        : 'open calendar.google.com once to feed data';
+      card.appendChild(note);
+    } else if (settings.source === 'dom') {
       const note = document.createElement('div');
       note.className = 'gtt-note';
       note.textContent = `page mode · ${domEventsRead} events read in view`;
@@ -137,12 +157,29 @@
   // through only when a week's data actually changes. Keeps every scan
   // synchronous after startup.
   let domWeeks = null;
+  let domWeeksAt = 0;
   let renderSig = '';
 
-  const refreshDom = async () => {
-    if (!domWeeks) {
-      ({ gttDomWeeks: domWeeks = {} } = await chrome.storage.local.get('gttDomWeeks'));
+  const loadDomWeeks = async () => {
+    if (domWeeks) return;
+    const got = await chrome.storage.local.get(['gttDomWeeks', 'gttDomWeeksAt']);
+    domWeeks = got.gttDomWeeks || {};
+    domWeeksAt = got.gttDomWeeksAt || 0;
+  };
+
+  const refreshNotion = async () => {
+    await loadDomWeeks();
+    viewWeekTs = CalHours.weekStart(new Date()).getTime();
+    lastRows = computeRows((domWeeks[viewWeekTs] || []).map(hydrate));
+    const sig = JSON.stringify([viewWeekTs, lastRows, domWeeksAt, settings.widgetCollapsed]);
+    if (sig !== renderSig) {
+      renderSig = sig;
+      render();
     }
+  };
+
+  const refreshDom = async () => {
+    await loadDomWeeks();
     const occurrences = CalDom.scan();
     domEventsRead = occurrences.length;
 
@@ -160,7 +197,10 @@
         dirty = true;
       }
     }
-    if (dirty) chrome.storage.local.set({ gttDomWeeks: domWeeks });
+    if (dirty) {
+      domWeeksAt = Date.now();
+      chrome.storage.local.set({ gttDomWeeks: domWeeks, gttDomWeeksAt: domWeeksAt });
+    }
 
     // Follow the week the user is looking at — going back a week shows that
     // week's totals (and stores them for the popup history).
@@ -176,9 +216,17 @@
     }
   };
 
-  const refresh = () => (settings.source === 'dom' ? refreshDom() : refreshIcs());
+  const refresh = () =>
+    onNotion ? refreshNotion() : settings.source === 'dom' ? refreshDom() : refreshIcs();
 
   chrome.storage.onChanged.addListener((changes, area) => {
+    // A Google Calendar tab updated the shared week data — mirror it live.
+    if (area === 'local' && changes.gttDomWeeks) {
+      domWeeks = changes.gttDomWeeks.newValue || {};
+      if (changes.gttDomWeeksAt) domWeeksAt = changes.gttDomWeeksAt.newValue || 0;
+      if (onNotion) refreshNotion();
+      return;
+    }
     if (area !== 'sync') return;
     let needsRefresh = false;
     for (const [k, v] of Object.entries(changes)) {
@@ -191,7 +239,7 @@
   // The calendar grid re-renders constantly; debounce DOM scans.
   let debounce;
   const observer = new MutationObserver(() => {
-    if (settings.source !== 'dom') return;
+    if (onNotion || settings.source !== 'dom') return;
     clearTimeout(debounce);
     debounce = setTimeout(refreshDom, 150);
   });

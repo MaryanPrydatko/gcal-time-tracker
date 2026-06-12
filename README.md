@@ -60,6 +60,12 @@ Some Workspace admins hide the secret iCal address (you'll only see *Public* fie
 - Weeks run Monday–Sunday; "this week" includes upcoming scheduled hours
 - Settings sync via `chrome.storage.sync`; the widget refreshes every 30 minutes
 
+## Notion Calendar
+
+If you use **Notion Calendar in the browser** (`calendar.notion.so`), the same widget appears there — fed by the data collected from your Google Calendar tabs/feeds (Notion Calendar is a view over the same calendars). It live-updates whenever a Google Calendar tab refreshes the shared cache and shows a freshness label ("from Google Calendar · 2h ago").
+
+The Notion Calendar **desktop app** can't be supported — browser extensions cannot inject into Electron apps. Reading Notion Calendar's own DOM natively is on the roadmap.
+
 ## Development & testing
 
 ```bash

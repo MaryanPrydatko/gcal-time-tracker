@@ -377,6 +377,46 @@ check(popupDomValue === '4 / 20h this week · −16h', `dom-mode popup current w
 check(!(await popupDom.locator('#calendarsSection').isVisible()), 'calendars section hidden in dom mode');
 check(await popupDom.locator('#domSection').isVisible(), 'source section visible in dom mode');
 
+// --- 6. widget on Notion Calendar (renders from shared GCal data) ----------
+const notion = await browser.newPage();
+notion.on('pageerror', (e) => errors.push(String(e)));
+await notion.route('**/*', (r) => r.fulfill({ contentType: 'text/html', body: '<body></body>' }));
+await notion.addInitScript(`
+  const localStore = {
+    gttDomWeeks: ${JSON.stringify({ [+cur]: [{ s: +at(cur, 0, 10), e: +at(cur, 0, 14), m: 'work' }] })},
+    gttDomWeeksAt: 1,
+  };
+  window.chrome = {
+    storage: {
+      sync: {
+        get: async (d) => ({ ...d, source: 'dom', tracked: [{ name: 'work', target: 20 }] }),
+        set: async () => {},
+      },
+      local: {
+        get: async (k) => {
+          if (typeof k === 'string') return { [k]: localStore[k] };
+          if (Array.isArray(k)) return Object.fromEntries(k.map((key) => [key, localStore[key]]));
+          return { ...k, ...localStore };
+        },
+        set: async (o) => Object.assign(localStore, o),
+      },
+      onChanged: { addListener: () => {} },
+    },
+    runtime: { getManifest: () => ({ version: '1.0.0' }) },
+  };
+`);
+await notion.goto('https://calendar.notion.so/');
+await notion.addStyleTag({ path: path.join(root, 'content.css') });
+await notion.addScriptTag({ path: path.join(root, 'vendor', 'ical.min.js') });
+await notion.addScriptTag({ path: path.join(root, 'lib', 'hours.js') });
+await notion.addScriptTag({ path: path.join(root, 'dom-reader.js') });
+await notion.addScriptTag({ path: path.join(root, 'content.js') });
+await notion.waitForTimeout(400);
+const notionValue = await notion.locator('.gtt-value').first().innerText();
+check(notionValue === '4 / 20h · −16h', `notion widget shows GCal-fed hours (got "${notionValue}")`);
+const notionNote = await notion.locator('.gtt-note').innerText();
+check(/from Google Calendar/.test(notionNote), `notion widget labels its data source (got "${notionNote}")`);
+
 check(errors.length === 0, `no page errors${errors.length ? ` (${errors[0]})` : ''}`);
 
 await browser.close();
