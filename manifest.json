@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GCal Time Tracker",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Track how many hours per week your named Google Calendar events add up to — with weekly targets, right inside Google Calendar.",
   "icons": {
     "16": "icons/icon16.png",

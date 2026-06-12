@@ -133,7 +133,16 @@
 
   const hydrate = (o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m });
 
+  // In-memory mirror of storage.local.gttDomWeeks — loaded once, written
+  // through only when a week's data actually changes. Keeps every scan
+  // synchronous after startup.
+  let domWeeks = null;
+  let renderSig = '';
+
   const refreshDom = async () => {
+    if (!domWeeks) {
+      ({ gttDomWeeks: domWeeks = {} } = await chrome.storage.local.get('gttDomWeeks'));
+    }
     const occurrences = CalDom.scan();
     domEventsRead = occurrences.length;
 
@@ -144,18 +153,27 @@
       if (!byWeek.has(ts)) byWeek.set(ts, []);
       byWeek.get(ts).push({ s: +occ.start, e: +occ.end, m: occ.summary });
     }
-    const { gttDomWeeks = {} } = await chrome.storage.local.get('gttDomWeeks');
-    if (byWeek.size) {
-      for (const [ts, arr] of byWeek) gttDomWeeks[ts] = arr;
-      chrome.storage.local.set({ gttDomWeeks });
+    let dirty = false;
+    for (const [ts, arr] of byWeek) {
+      if (JSON.stringify(domWeeks[ts]) !== JSON.stringify(arr)) {
+        domWeeks[ts] = arr;
+        dirty = true;
+      }
     }
+    if (dirty) chrome.storage.local.set({ gttDomWeeks: domWeeks });
 
     // Follow the week the user is looking at — going back a week shows that
     // week's totals (and stores them for the popup history).
     const viewDate = CalDom.visibleWeekDate();
     viewWeekTs = CalHours.weekStart(viewDate || new Date()).getTime();
-    lastRows = computeRows((gttDomWeeks[viewWeekTs] || []).map(hydrate), new Date(viewWeekTs));
-    render();
+    lastRows = computeRows((domWeeks[viewWeekTs] || []).map(hydrate), new Date(viewWeekTs));
+
+    // Skip DOM churn when nothing visible changed.
+    const sig = JSON.stringify([viewWeekTs, lastRows, domEventsRead, settings.widgetCollapsed]);
+    if (sig !== renderSig) {
+      renderSig = sig;
+      render();
+    }
   };
 
   const refresh = () => (settings.source === 'dom' ? refreshDom() : refreshIcs());
@@ -175,10 +193,13 @@
   const observer = new MutationObserver(() => {
     if (settings.source !== 'dom') return;
     clearTimeout(debounce);
-    debounce = setTimeout(refreshDom, 400);
+    debounce = setTimeout(refreshDom, 150);
   });
   observer.observe(document.body, { childList: true, subtree: true });
 
   refresh();
+  // The grid often isn't rendered yet at document_idle — retry shortly.
+  setTimeout(refresh, 1000);
+  setTimeout(refresh, 3000);
   setInterval(refresh, 30 * 60 * 1000);
 })();
