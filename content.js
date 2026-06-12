@@ -16,6 +16,13 @@
   // and live-updates via storage events.
   const onNotion = location.hostname.endsWith('notion.so');
 
+  // Remember which Google account's calendar to open for background
+  // refreshes (multi-account /u/N/ paths).
+  if (location.hostname === 'calendar.google.com') {
+    const m = location.pathname.match(/^\/calendar\/u\/\d+\//);
+    chrome.storage.local.set({ gttGcalPath: m ? m[0] : '/calendar/u/0/' });
+  }
+
   const agoText = (ts) => {
     const m = Math.round((Date.now() - ts) / 60000);
     if (m < 1) return 'just now';

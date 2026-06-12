@@ -376,6 +376,7 @@ const popupDomValue = await popupDom.locator('.card .value').first().innerText()
 check(popupDomValue === '4 / 20h this week · −16h', `dom-mode popup current week from store (got "${popupDomValue}")`);
 check(!(await popupDom.locator('#calendarsSection').isVisible()), 'calendars section hidden in dom mode');
 check(await popupDom.locator('#domSection').isVisible(), 'source section visible in dom mode');
+check(await popupDom.locator('#refreshGcal').isVisible(), 'refresh-from-Google button available in dom mode');
 
 // --- 6. widget on Notion Calendar (renders from shared GCal data) ----------
 const notion = await browser.newPage();

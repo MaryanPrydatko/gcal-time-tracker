@@ -23,6 +23,14 @@ const maskUrl = (url) => {
 
 const fmtH = (h) => (Math.round(h * 10) / 10).toString();
 
+const agoText = (ts) => {
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
+};
+
 const weekLabel = (ts) => {
   const start = new Date(ts);
   const end = new Date(ts);
@@ -140,14 +148,17 @@ const refresh = async () => {
       $('status').textContent = 'Add an event name to track';
       return;
     }
-    const { gttDomWeeks = {} } = await chrome.storage.local.get('gttDomWeeks');
+    const { gttDomWeeks = {}, gttDomWeeksAt = 0 } = await chrome.storage.local.get([
+      'gttDomWeeks',
+      'gttDomWeeksAt',
+    ]);
     const occurrences = Object.values(gttDomWeeks)
       .flat()
       .map((o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m }));
     renderStats(occurrences);
-    $('status').textContent = Object.keys(gttDomWeeks).length
-      ? 'Page mode — updates as you browse calendar.google.com'
-      : 'Page mode — open calendar.google.com (week view) to read events';
+    $('status').textContent = gttDomWeeksAt
+      ? `Google data updated ${agoText(gttDomWeeksAt)}`
+      : 'Open calendar.google.com (week view) or hit "Refresh from Google"';
     return;
   }
   if (!state.icsUrls.length || !state.tracked.length) {
@@ -226,12 +237,30 @@ $('icsModeBtn').addEventListener('click', async () => {
   refresh();
 });
 
+const refreshFromGoogle = () => {
+  $('status').textContent = 'Refreshing from Google Calendar…';
+  // Background worker opens a hidden GCal tab, lets the scanner run, closes it.
+  chrome.runtime.sendMessage?.({ type: 'gtt-refresh-gcal' })?.catch?.(() => {});
+};
+
+$('refreshGcal').addEventListener('click', refreshFromGoogle);
+
+// Re-render live when the background refresh (or any GCal tab) lands.
+chrome.storage.onChanged?.addListener?.((changes, area) => {
+  if (area === 'local' && changes.gttDomWeeks) refresh();
+});
+
 const init = async () => {
   state = await chrome.storage.sync.get(DEFAULTS);
   if (!state.source) state.source = state.icsUrls.length ? 'ics' : 'dom';
   $('version').textContent = `v${chrome.runtime.getManifest().version}`;
   render();
   refresh(); // intentionally not awaited — paint first
+  // Page mode: kick off a background Google refresh when data is stale.
+  if (state.source === 'dom' && state.tracked.length) {
+    const { gttDomWeeksAt = 0 } = await chrome.storage.local.get('gttDomWeeksAt');
+    if (Date.now() - gttDomWeeksAt > 15 * 60 * 1000) refreshFromGoogle();
+  }
   // Feed mode: show cached stats while the fresh fetch is in flight.
   if (state.source === 'ics' && state.tracked.length) {
     const { lastStats } = await chrome.storage.local.get('lastStats');
