@@ -86,6 +86,12 @@
   background: #81c995;
 }
 
+.gtt-note {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #9aa0a6;
+}
+
 .gtt-pill {
   border: 1px solid #3c4043;
   border-radius: 9999px;

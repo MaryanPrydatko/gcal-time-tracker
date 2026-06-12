@@ -184,6 +184,129 @@ check((await widget.locator('.gtt-pill').count()) === 1, 'widget collapses to pi
 await widget.locator('.gtt-pill').click();
 check((await widget.locator('.gtt-card').count()) === 1, 'pill expands back to card');
 
+// --- 4. page-reading (DOM) mode -------------------------------------------
+const datekey = (d) =>
+  ((d.getFullYear() - 1970) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+const mon = cur; // this week's Monday
+const tue = at(cur, 1, 0);
+
+const gridHtml = `
+  <div role="grid">
+    <div data-datekey="${datekey(mon)}">
+      <div data-eventid="e1" role="button">
+        <div>work</div><div>10:00 – 13:30</div>
+        <div class="XuJrye">10:00 to 13:30, work, Maryan Prydatko</div>
+      </div>
+      <div data-eventid="e4" role="button">
+        <div>Office</div>
+        <div class="XuJrye">Office, All day</div>
+      </div>
+    </div>
+    <div data-datekey="${datekey(tue)}">
+      <div data-eventid="e2" role="button">
+        <div>work</div><div>15:00 – 18:15</div>
+        <div class="XuJrye">15:00 to 18:15, work, Maryan Prydatko</div>
+      </div>
+      <div data-eventid="e3" role="button">
+        <div>Gym</div><div>7:00 – 8:00</div>
+        <div class="XuJrye">7:00 to 8:00, Gym, Maryan Prydatko</div>
+      </div>
+    </div>
+  </div>`;
+
+const dom = await browser.newPage();
+dom.on('pageerror', (e) => errors.push(String(e)));
+await dom.addInitScript(`
+  const localStore = {};
+  window.chrome = {
+    storage: {
+      sync: {
+        get: async (d) => ({ ...d, source: 'dom',
+          tracked: [{ name: 'work', target: 20 }] }),
+        set: async () => {},
+      },
+      local: {
+        get: async (k) => (typeof k === 'string' ? { [k]: localStore[k] } : { ...k, ...localStore }),
+        set: async (o) => Object.assign(localStore, o),
+      },
+      onChanged: { addListener: () => {} },
+    },
+    runtime: { getManifest: () => ({ version: '1.0.0' }) },
+  };
+`);
+await dom.goto('about:blank');
+await dom.setContent(`<body>${gridHtml}</body>`);
+await dom.addStyleTag({ path: path.join(root, 'content.css') });
+await dom.addScriptTag({ path: path.join(root, 'vendor', 'ical.min.js') });
+await dom.addScriptTag({ path: path.join(root, 'lib', 'hours.js') });
+await dom.addScriptTag({ path: path.join(root, 'dom-reader.js') });
+
+const parse = await dom.evaluate(() => ({
+  h24: CalDom.parseRange('10:00 – 13:30'),
+  h12: CalDom.parseRange('11:30am – 1pm'),
+  inherit: CalDom.parseRange('10 – 11am'),
+  flip: CalDom.parseRange('11 – 1pm'),
+  bad: CalDom.parseRange('All day'),
+}));
+check(parse.h24 && parse.h24.endMin - parse.h24.startMin === 210, '24h range parses (3.5h)');
+check(parse.h12 && parse.h12.endMin - parse.h12.startMin === 90, '12h range parses (1.5h)');
+check(parse.inherit && parse.inherit.endMin - parse.inherit.startMin === 60, 'am/pm inherited from end token');
+check(parse.flip && parse.flip.endMin - parse.flip.startMin === 120, '"11 – 1pm" flips start to am');
+check(parse.bad === null, 'all-day text rejected');
+
+const scanned = await dom.evaluate(() => CalDom.scan().map((o) => ({
+  summary: o.summary,
+  hours: (o.end - o.start) / 3.6e6,
+  day: o.start.getDay(),
+})));
+check(scanned.length === 3, `scan finds 3 timed events (got ${scanned.length})`);
+check(
+  scanned.filter((o) => o.summary === 'work').reduce((s, o) => s + o.hours, 0) === 6.75,
+  'scanned work hours = 6.75'
+);
+
+await dom.addScriptTag({ path: path.join(root, 'content.js') });
+await dom.waitForTimeout(400);
+const domWidgetWork = await dom.locator('.gtt-value').first().innerText();
+check(domWidgetWork === '6.8 / 20h', `dom-mode widget shows work progress (got "${domWidgetWork}")`);
+const domNote = await dom.locator('.gtt-note').innerText();
+check(/page mode · 3 events read/.test(domNote), `dom-mode widget shows read counter (got "${domNote}")`);
+
+// --- 5. popup in page-reading mode -----------------------------------------
+const popupDom = await browser.newPage();
+popupDom.on('pageerror', (e) => errors.push(String(e)));
+const seedWeeks = {};
+seedWeeks[+cur] = [
+  { s: +at(cur, 0, 10), e: +at(cur, 0, 13.5 * 1), m: 'work' },
+];
+await popupDom.addInitScript(`
+  const localStore = { gttDomWeeks: ${JSON.stringify({
+    [+cur]: [{ s: +at(cur, 0, 10), e: +at(cur, 0, 14), m: 'work' }],
+    [+at(cur, -7, 0)]: [{ s: +at(cur, -7, 9), e: +at(cur, -7, 17), m: 'work' }],
+  })} };
+  window.chrome = {
+    storage: {
+      sync: {
+        get: async (d) => ({ ...d, source: 'dom', tracked: [{ name: 'work', target: 20 }] }),
+        set: async () => {},
+      },
+      local: {
+        get: async (k) => (typeof k === 'string' ? { [k]: localStore[k] } : { ...k, ...localStore }),
+        set: async (o) => Object.assign(localStore, o),
+      },
+      onChanged: { addListener: () => {} },
+    },
+    runtime: { getManifest: () => ({ version: '1.0.0' }) },
+  };
+`);
+await popupDom.goto(`file://${path.join(root, 'popup.html')}`);
+await popupDom.waitForTimeout(400);
+check((await popupDom.locator('.card').count()) === 1, 'dom-mode popup renders tracked card');
+const popupDomValue = await popupDom.locator('.card .value').first().innerText();
+check(popupDomValue === '4 / 20h this week', `dom-mode popup current week from store (got "${popupDomValue}")`);
+check(!(await popupDom.locator('#calendarsSection').isVisible()), 'calendars section hidden in dom mode');
+check(await popupDom.locator('#domSection').isVisible(), 'source section visible in dom mode');
+
 check(errors.length === 0, `no page errors${errors.length ? ` (${errors[0]})` : ''}`);
 
 await browser.close();

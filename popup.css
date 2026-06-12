@@ -103,6 +103,44 @@ button[type="submit"]:hover {
   background: #aecbfa;
 }
 
+.alt {
+  padding: 6px 16px 14px;
+  border-top: 1px solid #3c4043;
+  margin-top: 10px;
+}
+
+.alt p,
+.note {
+  margin: 8px 16px 6px 0;
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+.note {
+  margin: 6px 16px;
+}
+
+.alt button,
+.linkbtn {
+  background: none;
+  border: 1px solid #3c4043;
+  color: #8ab4f8;
+  border-radius: 9999px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.alt button:hover,
+.linkbtn:hover {
+  background: rgba(138, 180, 248, 0.1);
+}
+
+.linkbtn {
+  margin: 4px 16px 12px;
+}
+
 /* Stat cards */
 .card {
   margin: 10px 16px 4px;

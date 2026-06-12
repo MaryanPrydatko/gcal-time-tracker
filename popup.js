@@ -1,4 +1,4 @@
-const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false };
+const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false, source: 'ics' };
 const WEEKS_BACK = 4;
 
 let state = { ...DEFAULTS };
@@ -54,11 +54,12 @@ const renderChips = (el, items, label, onRemove) => {
 };
 
 const render = () => {
-  const configured = state.icsUrls.length > 0;
+  const configured = state.source === 'dom' || state.icsUrls.length > 0;
   $('setup').hidden = configured;
   $('statsSection').hidden = !configured;
   $('trackedSection').hidden = !configured;
-  $('calendarsSection').hidden = !configured;
+  $('calendarsSection').hidden = !configured || state.source === 'dom';
+  $('domSection').hidden = !configured || state.source !== 'dom';
 
   renderChips($('trackedChips'), state.tracked, 'Nothing tracked yet — add an event name below', (i) =>
     save({ tracked: state.tracked.filter((_, j) => j !== i) })
@@ -125,6 +126,21 @@ const renderStats = (occurrences) => {
 };
 
 const refresh = async () => {
+  if (state.source === 'dom') {
+    if (!state.tracked.length) {
+      $('status').textContent = 'Add an event name to track';
+      return;
+    }
+    const { gttDomWeeks = {} } = await chrome.storage.local.get('gttDomWeeks');
+    const occurrences = Object.values(gttDomWeeks)
+      .flat()
+      .map((o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m }));
+    renderStats(occurrences);
+    $('status').textContent = Object.keys(gttDomWeeks).length
+      ? 'Page mode — updates as you browse calendar.google.com'
+      : 'Page mode — open calendar.google.com (week view) to read events';
+    return;
+  }
   if (!state.icsUrls.length || !state.tracked.length) {
     $('status').textContent = state.icsUrls.length ? 'Add an event name to track' : '';
     return;
@@ -191,13 +207,23 @@ $('trackedForm').addEventListener('submit', async (e) => {
   refresh();
 });
 
+$('domModeBtn').addEventListener('click', async () => {
+  await save({ source: 'dom' });
+  refresh();
+});
+
+$('icsModeBtn').addEventListener('click', async () => {
+  await save({ source: 'ics' });
+  refresh();
+});
+
 const init = async () => {
   state = await chrome.storage.sync.get(DEFAULTS);
   $('version').textContent = `v${chrome.runtime.getManifest().version}`;
   render();
   // Show cached stats instantly (works on any tab), then refresh.
   const { lastStats } = await chrome.storage.local.get('lastStats');
-  if (lastStats?.occ && state.tracked.length) {
+  if (state.source === 'ics' && lastStats?.occ && state.tracked.length) {
     renderStats(lastStats.occ.map((o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m })));
     $('status').textContent = 'Cached — refreshing…';
   }

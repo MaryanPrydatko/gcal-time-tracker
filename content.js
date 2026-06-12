@@ -1,9 +1,11 @@
 // Floating "this week" progress widget injected into calendar.google.com.
+// Two data sources: secret iCal feed ("ics") or reading the rendered
+// calendar grid ("dom") for Workspace accounts whose admin hides the feed.
 (async () => {
-  const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false };
-  const WEEKS_BACK = 4;
+  const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false, source: 'ics' };
   let settings = await chrome.storage.sync.get(DEFAULTS);
   let lastRows = [];
+  let domEventsRead = 0;
 
   const fmtH = (h) => (Math.round(h * 10) / 10).toString();
 
@@ -11,9 +13,17 @@
   root.id = 'gtt-widget';
   document.documentElement.appendChild(root);
 
+  const computeRows = (occurrences) =>
+    settings.tracked.map(({ name, target }) => {
+      const rows = CalHours.weeklyHours(occurrences, name, 0);
+      return { name, target, hours: rows[rows.length - 1].hours };
+    });
+
   const render = () => {
     root.textContent = '';
-    if (!settings.icsUrls.length || !settings.tracked.length) {
+    const configured =
+      settings.tracked.length && (settings.source === 'dom' || settings.icsUrls.length);
+    if (!configured) {
       root.hidden = true;
       return;
     }
@@ -76,39 +86,78 @@
       line.append(label, value, bar);
       card.appendChild(line);
     }
+
+    if (settings.source === 'dom') {
+      const note = document.createElement('div');
+      note.className = 'gtt-note';
+      note.textContent = `page mode · ${domEventsRead} events read in view`;
+      card.appendChild(note);
+    }
     root.appendChild(card);
   };
 
-  const refresh = async () => {
+  const refreshIcs = async () => {
     if (!settings.icsUrls.length || !settings.tracked.length) {
       render();
       return;
     }
     try {
-      const { from, to } = CalHours.range(WEEKS_BACK);
+      const { from, to } = CalHours.range(4);
       const texts = await Promise.all(
         settings.icsUrls.map((u) => fetch(u).then((r) => r.text()))
       );
       const occurrences = texts.flatMap((t) => CalHours.expandICS(t, from, to));
-      lastRows = settings.tracked.map(({ name, target }) => {
-        const rows = CalHours.weeklyHours(occurrences, name, 0);
-        return { name, target, hours: rows[rows.length - 1].hours };
-      });
+      lastRows = computeRows(occurrences);
     } catch {
       // Keep the last good rows — transient fetch failures shouldn't blank the widget.
     }
     render();
   };
 
+  const hydrate = (o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m });
+
+  const refreshDom = async () => {
+    const occurrences = CalDom.scan();
+    domEventsRead = occurrences.length;
+
+    // Persist what's visible per week — history accumulates as you browse.
+    const byWeek = new Map();
+    for (const occ of occurrences) {
+      const ts = CalHours.weekStart(occ.start).getTime();
+      if (!byWeek.has(ts)) byWeek.set(ts, []);
+      byWeek.get(ts).push({ s: +occ.start, e: +occ.end, m: occ.summary });
+    }
+    const { gttDomWeeks = {} } = await chrome.storage.local.get('gttDomWeeks');
+    if (byWeek.size) {
+      for (const [ts, arr] of byWeek) gttDomWeeks[ts] = arr;
+      chrome.storage.local.set({ gttDomWeeks });
+    }
+
+    const curTs = CalHours.weekStart(new Date()).getTime();
+    lastRows = computeRows((gttDomWeeks[curTs] || []).map(hydrate));
+    render();
+  };
+
+  const refresh = () => (settings.source === 'dom' ? refreshDom() : refreshIcs());
+
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
     let needsRefresh = false;
     for (const [k, v] of Object.entries(changes)) {
       if (k in settings) settings[k] = v.newValue;
-      if (k === 'icsUrls' || k === 'tracked') needsRefresh = true;
+      if (k === 'icsUrls' || k === 'tracked' || k === 'source') needsRefresh = true;
     }
     needsRefresh ? refresh() : render();
   });
+
+  // The calendar grid re-renders constantly; debounce DOM scans.
+  let debounce;
+  const observer = new MutationObserver(() => {
+    if (settings.source !== 'dom') return;
+    clearTimeout(debounce);
+    debounce = setTimeout(refreshDom, 1500);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 
   refresh();
   setInterval(refresh, 30 * 60 * 1000);

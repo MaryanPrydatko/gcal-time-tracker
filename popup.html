@@ -24,6 +24,10 @@
       <input id="urlInput" type="url" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" autocomplete="off" spellcheck="false">
       <button type="submit">Connect</button>
     </form>
+    <div class="alt">
+      <p>No "Secret address"? Some Workspace admins hide it.</p>
+      <button type="button" id="domModeBtn">Use page-reading mode instead</button>
+    </div>
   </section>
 
   <section id="statsSection" hidden>
@@ -47,6 +51,12 @@
       <input id="moreUrlInput" type="url" placeholder="add another secret .ics URL" autocomplete="off" spellcheck="false">
       <button type="submit">Add</button>
     </form>
+  </section>
+
+  <section id="domSection" hidden>
+    <h2>Source</h2>
+    <p class="note">Page-reading mode: events are read from calendar.google.com as you browse. History fills in for weeks you view.</p>
+    <button type="button" id="icsModeBtn" class="linkbtn">Switch to iCal feed mode</button>
   </section>
 
   <footer>

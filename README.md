@@ -49,6 +49,10 @@ Same steps work in Chrome at `chrome://extensions`.
 
 Multiple calendars? Add more URLs — they're merged.
 
+### No "Secret address"? (Google Workspace)
+
+Some Workspace admins hide the secret iCal address (you'll only see *Public* fields under "Integrate calendar", and the public one returns 404). Click **"Use page-reading mode instead"** in the popup — the extension then reads events directly from the calendar grid as you browse calendar.google.com. No URLs, no admin needed. Trade-off: it only sees weeks you actually view, so history fills in as you browse; "this week" works immediately.
+
 ## How it works
 
 - Fetches your secret `.ics` feed and parses it with [ical.js](https://github.com/kewisch/ical.js)
