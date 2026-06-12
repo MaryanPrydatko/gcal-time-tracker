@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="icons/icon128.png" width="96" alt="GCal Time Tracker logo">
+  <img src="icons/icon128.png" width="96" alt="Week Tally logo">
 </p>
 
-<h1 align="center">GCal Time Tracker</h1>
+<h1 align="center">Week Tally</h1>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
@@ -35,7 +35,7 @@
 1. Open `brave://extensions`
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked** (or drag this folder onto the page)
-4. Select the `gcal-time-tracker` folder
+4. Select this folder
 
 Same steps work in Chrome at `chrome://extensions`.
 
