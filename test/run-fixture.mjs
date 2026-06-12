@@ -272,6 +272,70 @@ check(domWidgetWork === '6.8 / 20h', `dom-mode widget shows work progress (got "
 const domNote = await dom.locator('.gtt-note').innerText();
 check(/page mode · 3 events read/.test(domNote), `dom-mode widget shows read counter (got "${domNote}")`);
 
+// --- 4b. widget follows the viewed week (going back a week) ----------------
+const prevMon = at(cur, -7, 0);
+const prevTue = at(cur, -6, 0);
+const prevGrid = `
+  <div role="grid">
+    <div data-datekey="${datekey(prevMon)}">
+      <div data-eventid="p1" role="button">
+        <div>work</div><div>9:00 – 17:00</div>
+        <div class="XuJrye">9:00 to 17:00, work, Maryan Prydatko</div>
+      </div>
+    </div>
+    <div data-datekey="${datekey(prevTue)}"></div>
+  </div>`;
+
+const prev = await browser.newPage();
+prev.on('pageerror', (e) => errors.push(String(e)));
+await prev.addInitScript(`
+  const localStore = {};
+  window.chrome = {
+    storage: {
+      sync: {
+        get: async (d) => ({ ...d, source: 'dom', tracked: [{ name: 'work', target: 20 }] }),
+        set: async () => {},
+      },
+      local: {
+        get: async (k) => (typeof k === 'string' ? { [k]: localStore[k] } : { ...k, ...localStore }),
+        set: async (o) => Object.assign(localStore, o),
+      },
+      onChanged: { addListener: () => {} },
+    },
+    runtime: { getManifest: () => ({ version: '1.0.0' }) },
+  };
+`);
+await prev.goto('about:blank');
+await prev.setContent(`<body>${prevGrid}</body>`);
+await prev.addStyleTag({ path: path.join(root, 'content.css') });
+await prev.addScriptTag({ path: path.join(root, 'vendor', 'ical.min.js') });
+await prev.addScriptTag({ path: path.join(root, 'lib', 'hours.js') });
+await prev.addScriptTag({ path: path.join(root, 'dom-reader.js') });
+await prev.addScriptTag({ path: path.join(root, 'content.js') });
+await prev.waitForTimeout(400);
+const prevTitle = await prev.locator('.gtt-head strong').innerText();
+check(/^Week of /.test(prevTitle), `widget titled by viewed week (got "${prevTitle}")`);
+const prevValue = await prev.locator('.gtt-value').first().innerText();
+check(prevValue === '8 / 20h', `widget shows viewed week's hours (got "${prevValue}")`);
+
+// --- 4c. fresh install defaults to page-reading mode -----------------------
+const fresh = await browser.newPage();
+fresh.on('pageerror', (e) => errors.push(String(e)));
+await fresh.addInitScript(`
+  window.chrome = {
+    storage: {
+      sync: { get: async (d) => ({ ...d }), set: async () => {} },
+      local: { get: async () => ({}), set: async () => {} },
+      onChanged: { addListener: () => {} },
+    },
+    runtime: { getManifest: () => ({ version: '1.0.0' }) },
+  };
+`);
+await fresh.goto(`file://${path.join(root, 'popup.html')}`);
+await fresh.waitForTimeout(300);
+check(!(await fresh.locator('#setup').isVisible()), 'fresh install skips URL setup (page mode default)');
+check(await fresh.locator('#domSection').isVisible(), 'fresh install shows page-mode source section');
+
 // --- 5. popup in page-reading mode -----------------------------------------
 const popupDom = await browser.newPage();
 popupDom.on('pageerror', (e) => errors.push(String(e)));

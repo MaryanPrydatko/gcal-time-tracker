@@ -1,4 +1,6 @@
-const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false, source: 'ics' };
+// source '' = not chosen yet: page-reading by default, unless the user had
+// already configured feed URLs before this option existed.
+const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false, source: '' };
 const WEEKS_BACK = 4;
 
 let state = { ...DEFAULTS };
@@ -219,15 +221,17 @@ $('icsModeBtn').addEventListener('click', async () => {
 
 const init = async () => {
   state = await chrome.storage.sync.get(DEFAULTS);
+  if (!state.source) state.source = state.icsUrls.length ? 'ics' : 'dom';
   $('version').textContent = `v${chrome.runtime.getManifest().version}`;
   render();
-  // Show cached stats instantly (works on any tab), then refresh.
-  const { lastStats } = await chrome.storage.local.get('lastStats');
-  if (state.source === 'ics' && lastStats?.occ && state.tracked.length) {
-    renderStats(lastStats.occ.map((o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m })));
-    $('status').textContent = 'Cached — refreshing…';
+  refresh(); // intentionally not awaited — paint first
+  // Feed mode: show cached stats while the fresh fetch is in flight.
+  if (state.source === 'ics' && state.tracked.length) {
+    const { lastStats } = await chrome.storage.local.get('lastStats');
+    if (lastStats?.occ && !$('cards').children.length) {
+      renderStats(lastStats.occ.map((o) => ({ start: new Date(o.s), end: new Date(o.e), summary: o.m })));
+    }
   }
-  refresh();
 };
 
 init();

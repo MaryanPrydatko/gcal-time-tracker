@@ -2,10 +2,14 @@
 // Two data sources: secret iCal feed ("ics") or reading the rendered
 // calendar grid ("dom") for Workspace accounts whose admin hides the feed.
 (async () => {
-  const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false, source: 'ics' };
+  // source '' = not chosen yet: page-reading by default, unless the user
+  // had already configured feed URLs before this option existed.
+  const DEFAULTS = { icsUrls: [], tracked: [], widgetCollapsed: false, source: '' };
   let settings = await chrome.storage.sync.get(DEFAULTS);
+  if (!settings.source) settings.source = settings.icsUrls.length ? 'ics' : 'dom';
   let lastRows = [];
   let domEventsRead = 0;
+  let viewWeekTs = null; // week shown in the widget (dom mode follows the view)
 
   const fmtH = (h) => (Math.round(h * 10) / 10).toString();
 
@@ -13,9 +17,9 @@
   root.id = 'gtt-widget';
   document.documentElement.appendChild(root);
 
-  const computeRows = (occurrences) =>
+  const computeRows = (occurrences, refDate = new Date()) =>
     settings.tracked.map(({ name, target }) => {
-      const rows = CalHours.weeklyHours(occurrences, name, 0);
+      const rows = CalHours.weeklyHours(occurrences, name, 0, refDate);
       return { name, target, hours: rows[rows.length - 1].hours };
     });
 
@@ -52,7 +56,12 @@
     const head = document.createElement('div');
     head.className = 'gtt-head';
     const title = document.createElement('strong');
-    title.textContent = 'This week';
+    const curTs = CalHours.weekStart(new Date()).getTime();
+    const shownTs = viewWeekTs ?? curTs;
+    title.textContent =
+      shownTs === curTs
+        ? 'This week'
+        : `Week of ${new Date(shownTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     const collapse = document.createElement('button');
     collapse.className = 'gtt-collapse';
     collapse.textContent = '—';
@@ -108,6 +117,7 @@
       );
       const occurrences = texts.flatMap((t) => CalHours.expandICS(t, from, to));
       lastRows = computeRows(occurrences);
+      viewWeekTs = null; // feed mode always shows the current week
     } catch {
       // Keep the last good rows — transient fetch failures shouldn't blank the widget.
     }
@@ -133,8 +143,11 @@
       chrome.storage.local.set({ gttDomWeeks });
     }
 
-    const curTs = CalHours.weekStart(new Date()).getTime();
-    lastRows = computeRows((gttDomWeeks[curTs] || []).map(hydrate));
+    // Follow the week the user is looking at — going back a week shows that
+    // week's totals (and stores them for the popup history).
+    const viewDate = CalDom.visibleWeekDate();
+    viewWeekTs = CalHours.weekStart(viewDate || new Date()).getTime();
+    lastRows = computeRows((gttDomWeeks[viewWeekTs] || []).map(hydrate), new Date(viewWeekTs));
     render();
   };
 

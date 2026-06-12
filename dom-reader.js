@@ -109,5 +109,20 @@
     return out;
   };
 
-  globalThis.CalDom = { scan, parseRange, decodeDatekey };
+  // Which week is the user looking at? Median of the day-column datekeys.
+  // Returns null in month view (span too wide) or when no datekeys exist.
+  const visibleWeekDate = () => {
+    const dates = [];
+    for (const el of document.querySelectorAll('[data-datekey]')) {
+      const d = decodeDatekey(el.getAttribute('data-datekey'));
+      if (d) dates.push(d);
+    }
+    if (!dates.length) return null;
+    const distinctDays = new Set(dates.map((d) => d.toDateString()));
+    if (distinctDays.size > 8) return null; // month view — ambiguous
+    dates.sort((a, b) => a - b);
+    return dates[Math.floor(dates.length / 2)];
+  };
+
+  globalThis.CalDom = { scan, parseRange, decodeDatekey, visibleWeekDate };
 })();
