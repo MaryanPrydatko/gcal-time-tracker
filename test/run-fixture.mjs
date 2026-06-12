@@ -417,6 +417,7 @@ const notionValue = await notion.locator('.gtt-value').first().innerText();
 check(notionValue === '4 / 20h · −16h', `notion widget shows GCal-fed hours (got "${notionValue}")`);
 const notionNote = await notion.locator('.gtt-note').innerText();
 check(/from Google Calendar/.test(notionNote), `notion widget labels its data source (got "${notionNote}")`);
+check((await notion.locator('.gtt-debug').count()) === 1, 'notion widget offers page-info copy helper');
 
 check(errors.length === 0, `no page errors${errors.length ? ` (${errors[0]})` : ''}`);
 
